@@ -1,0 +1,69 @@
+name: Build Android 13 for Sapphiren (NFC)
+on:
+  workflow_dispatch: # Позволяет запустить сборку вручную кнопкой
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cleanup Space (Очистка места на сервере)
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: Install Tools (Установка инструментов сборки)
+        run: |
+          sudo apt update
+          sudo apt install -y git-core gnupg flex bison gperf build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z-dev ccache libgl1-mesa-dev libxml2-utils xsltproc unzip
+
+      - name: Get Repo Tool
+        run: |
+          mkdir ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          sudo ln -sf ~/bin/repo /usr/bin/repo
+
+      - name: Sync Sources (Загрузка базы crDroid 9.x)
+        run: |
+          mkdir android
+          cd android
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+          repo init -u https://github.com/crdroidandroid/android.git -b 13.0 --git-lfs
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+
+      - name: Clone Device Tree (Настройки для Redmi Note 13 4G NFC)
+        run: |
+          cd android
+          # Основное дерево устройства
+          git clone https://github.com/crdroidandroid/android_device_xiaomi_sapphire -b 13.0 device/xiaomi/sapphire
+          # Драйверы (Вендор)
+          git clone https://github.com/TheMuppets/proprietary_vendor_xiaomi_sapphire -b 13.0 vendor/xiaomi/sapphire
+          # Ядро
+          git clone https://github.com/LineageOS/android_kernel_xiaomi_sm6225 -b lineage-20 kernel/xiaomi/chime
+
+      - name: Apply Optimizations (Включение Single Tap to Wake)
+        run: |
+          cd android/device/xiaomi/sapphire
+          # Команда для включения одинарного тапа в настройках (если поддерживается ядром)
+          echo 'config_singleTapToWake=true' >> overlay/frameworks/base/core/res/res/values/config.xml
+
+      - name: Build Firmware (Компиляция)
+        run: |
+          cd android
+          source build/envsetup.sh
+          # Выбираем цель сборки
+          lunch lineag_sapphire-userdebug
+          # Собираем прошивку
+          mka bacon -j$(nproc --all)
+
+      - name: Upload Artifact (Выгрузка готового файла)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pixel-Like-Rom-Sapphiren
+          path: android/out/target/product/sapphire/*.zip
