@@ -1,4 +1,4 @@
-name: Build MegamboOS (Android 14 Official)
+name: Build MegamboOS (Max Disk Space Edition)
 
 on:
   workflow_dispatch:
@@ -7,13 +7,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Maximize Build Space
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/lib/jvm /usr/local/share/powershell /usr/share/swift
-          docker image prune -a -f
-          sudo apt-get clean
-          echo "Свободное место перед началом:"
-          df -h | grep "/$"
+      - name: Free Disk Space (The Nuclear Option)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,15 +28,15 @@ jobs:
           git config --global user.name "mbov777"
           git config --global user.email "megambo@example.com"
 
-      - name: Sync Source (crDroid 10.x / Android 14)
+      - name: Sync Source (Android 14)
         run: |
           mkdir -p ~/android && cd ~/android
           repo init -u https://github.com/crdroidandroid/android.git -b 14.0 --depth=1 --git-lfs
-          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-          echo "Место после синхронизации:"
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
+          echo "Место после тотальной синхронизации:"
           df -h | grep "/$"
 
-      - name: Clone Device Tree (Sapphire A14)
+      - name: Clone Device Tree
         run: |
           cd ~/android
           git clone https://github.com/crdroidandroid/android_device_xiaomi_sapphire -b 14.0 device/xiaomi/sapphire --depth=1
@@ -41,12 +44,13 @@ jobs:
           git clone https://github.com/LineageOS/android_kernel_xiaomi_sm6225 -b lineage-21 kernel/xiaomi/chime --depth=1
           git clone https://github.com/LineageOS/android_hardware_xiaomi -b lineage-21 hardware/xiaomi --depth=1
 
-      - name: Build Firmware (Compilation)
+      - name: Build Firmware
         run: |
           cd ~/android
           source build/envsetup.sh
           lunch lineage_sapphire-userdebug
-          mka bacon -j$(nproc --all)
+          # Ограничиваем j до 4, чтобы не переполнить диск временными файлами компиляции
+          mka bacon -j4
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
