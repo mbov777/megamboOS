@@ -1,22 +1,19 @@
-name: Build MegamboOS (Space Optimized)
+name: Build MegamboOS (Full Optimization)
 
 on:
-  workflow_dispatch: # Позволяет запускать вручную кнопкой
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Maximize Build Space
+      - name: Maximize Build Space (Тотальная очистка)
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf /usr/lib/jvm
-          # Очистка кэша пакетов
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/lib/jvm /usr/local/share/powershell /usr/share/swift
+          docker image prune -a -f
           sudo apt-get clean
-          df -h # Покажет, сколько места стало
+          echo "Свободное место перед началом:"
+          df -h | grep "/$"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,24 +23,32 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential zip curl libstdc++6 git wget python3 gcc clang libssl-dev repo
           git config --global user.name "mbov777"
-          git config --global user.email "твой_email"
+          git config --global user.email "megambo@example.com"
 
-      - name: Sync Source
+      - name: Sync Source (Загрузка системы)
         run: |
           mkdir -p ~/android && cd ~/android
-          repo init -u https://github.com/crdroidandroid/android.git -b 13.0 --depth=1
+          repo init -u https://github.com/crdroidandroid/android.git -b 13.0 --depth=1 --git-lfs
           repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-          
-      - name: Clone Device Tree
+          echo "Место после загрузки исходников:"
+          df -h | grep "/$"
+
+      - name: Clone Device Tree (Драйверы Redmi Note 13 4G)
         run: |
           cd ~/android
           git clone https://github.com/crdroidandroid/android_device_xiaomi_sapphire -b 13.0 device/xiaomi/sapphire --depth=1
           git clone https://github.com/TheMuppets/proprietary_vendor_xiaomi_sapphire -b 13.0 vendor/xiaomi/sapphire --depth=1
           git clone https://github.com/LineageOS/android_kernel_xiaomi_sm6225 -b lineage-20 kernel/xiaomi/chime --depth=1
 
-      - name: Build ROM
+      - name: Build Firmware (Компиляция)
         run: |
           cd ~/android
           source build/envsetup.sh
-          lunch lineag_sapphire-userdebug
+          lunch lineage_sapphire-userdebug
           mka bacon -j$(nproc --all)
+
+      - name: Upload Artifact (Выгрузка файла)
+        uses: actions/upload-artifact@v4
+        with:
+          name: MegamboOS-RedmiNote13
+          path: ~/android/out/target/product/sapphire/*.zip
