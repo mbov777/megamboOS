@@ -1,4 +1,4 @@
-name: Build MegamboOS (Final Fix)
+name: Build MegamboOS (Final Branch Fix)
 
 on:
   workflow_dispatch:
@@ -36,8 +36,8 @@ jobs:
       - name: Clone Device Tree (Драйверы Redmi Note 13 4G)
         run: |
           cd ~/android
-          git clone https://github.com/crdroidandroid/android_device_xiaomi_sapphire -b 13 device/xiaomi/sapphire --depth=1
-          git clone https://github.com/TheMuppets/proprietary_vendor_xiaomi_sapphire -b 13 vendor/xiaomi/sapphire --depth=1
+          git clone https://github.com/crdroidandroid/android_device_xiaomi_sapphire -b 9.x device/xiaomi/sapphire --depth=1
+          git clone https://github.com/TheMuppets/proprietary_vendor_xiaomi_sapphire -b 13.0 vendor/xiaomi/sapphire --depth=1
           git clone https://github.com/LineageOS/android_kernel_xiaomi_sm6225 -b lineage-20 kernel/xiaomi/chime --depth=1
           git clone https://github.com/LineageOS/android_hardware_xiaomi -b lineage-20 hardware/xiaomi --depth=1
 
