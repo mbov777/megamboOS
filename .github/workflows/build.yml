@@ -1,4 +1,4 @@
-name: Build MegamboOS (Final Branch Fix)
+name: Build MegamboOS (Android 14 Official)
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Maximize Build Space (Тотальная очистка)
+      - name: Maximize Build Space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/lib/jvm /usr/local/share/powershell /usr/share/swift
           docker image prune -a -f
@@ -25,31 +25,31 @@ jobs:
           git config --global user.name "mbov777"
           git config --global user.email "megambo@example.com"
 
-      - name: Sync Source (Загрузка системы)
+      - name: Sync Source (crDroid 10.x / Android 14)
         run: |
           mkdir -p ~/android && cd ~/android
-          repo init -u https://github.com/crdroidandroid/android.git -b 13.0 --depth=1 --git-lfs
+          repo init -u https://github.com/crdroidandroid/android.git -b 14.0 --depth=1 --git-lfs
           repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-          echo "Место после загрузки исходников:"
+          echo "Место после синхронизации:"
           df -h | grep "/$"
 
-      - name: Clone Device Tree (Драйверы Redmi Note 13 4G)
+      - name: Clone Device Tree (Sapphire A14)
         run: |
           cd ~/android
-          git clone https://github.com/crdroidandroid/android_device_xiaomi_sapphire -b 9.x device/xiaomi/sapphire --depth=1
-          git clone https://github.com/TheMuppets/proprietary_vendor_xiaomi_sapphire -b 13.0 vendor/xiaomi/sapphire --depth=1
-          git clone https://github.com/LineageOS/android_kernel_xiaomi_sm6225 -b lineage-20 kernel/xiaomi/chime --depth=1
-          git clone https://github.com/LineageOS/android_hardware_xiaomi -b lineage-20 hardware/xiaomi --depth=1
+          git clone https://github.com/crdroidandroid/android_device_xiaomi_sapphire -b 14.0 device/xiaomi/sapphire --depth=1
+          git clone https://github.com/TheMuppets/proprietary_vendor_xiaomi_sapphire -b 14.0 vendor/xiaomi/sapphire --depth=1
+          git clone https://github.com/LineageOS/android_kernel_xiaomi_sm6225 -b lineage-21 kernel/xiaomi/chime --depth=1
+          git clone https://github.com/LineageOS/android_hardware_xiaomi -b lineage-21 hardware/xiaomi --depth=1
 
-      - name: Build Firmware (Компиляция)
+      - name: Build Firmware (Compilation)
         run: |
           cd ~/android
           source build/envsetup.sh
-          lunch lineag_sapphire-userdebug
+          lunch lineage_sapphire-userdebug
           mka bacon -j$(nproc --all)
 
-      - name: Upload Artifact (Выгрузка файла)
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MegamboOS-RedmiNote13
+          name: MegamboOS-v10-Sapphire
           path: ~/android/out/target/product/sapphire/*.zip
