@@ -1,30 +1,38 @@
+container:
+  image: aospbuild/aosp:latest # Специальный образ со всеми утилитами
+  cpu: 8
+  memory: 32G
+
 task:
-  name: Build_Sapphiren_v1.1
-  timeout_in: 4h
-  # Используем другой образ, иногда это помогает сменить пул серверов
-  container:
-    image: ghcr.io/shrp-devices/aio:latest 
-    cpu: 8
-    memory: 24G
-  
+  name: MegamboOS_Build_A14
+  timeout_in: 4h # Cirrus дает больше времени на сборку
+
   environment:
-    # Параметры для Play Integrity Fix (первичные)
-    CUSTOM_FINGERPRINT: "google/marlin/marlin:7.1.2/NJH47O/4161133:user/release-keys"
+    USER_NAME: "mbov777"
+    USER_EMAIL: "megambo@example.com"
+
+  cleanup_script:
+    - rm -rf /tmp/* # Очистка временных файлов перед стартом
+
+  sync_script:
+    - git config --global user.name "$USER_NAME"
+    - git config --global user.email "$USER_EMAIL"
+    - mkdir -p ~/android && cd ~/android
+    - repo init -u https://github.com/crdroidandroid/android.git -b 14.0 --depth=1
+    - repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
+    
+  clone_trees_script:
+    - cd ~/android
+    - git clone https://github.com/crdroidandroid/android_device_xiaomi_sapphire -b 14.0 device/xiaomi/sapphire --depth=1
+    - git clone https://github.com/TheMuppets/proprietary_vendor_xiaomi_sapphire -b 14.0 vendor/xiaomi/sapphire --depth=1
+    - git clone https://github.com/LineageOS/android_kernel_xiaomi_sm6225 -b lineage-21 kernel/xiaomi/chime --depth=1
+    - git clone https://github.com/LineageOS/android_hardware_xiaomi -b lineage-21 hardware/xiaomi --depth=1
 
   build_script:
-    - git config --global user.name "mbov777"
-    - git config --global user.email "imya777821@gmail.com"
-    - mkdir -p /tmp/android && cd /tmp/android
-    # Инициализация
-    - repo init -u https://github.com/crdroidandroid/android.git -b 13.0 --depth=1
-    - repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
-    # Клонирование дерева sapphiren
-    - git clone https://github.com/crdroidandroid/android_device_xiaomi_sapphire -b 13.0 device/xiaomi/sapphire --depth=1
-    - git clone https://github.com/TheMuppets/proprietary_vendor_xiaomi_sapphire -b 13.0 vendor/xiaomi/sapphire --depth=1
-    - git clone https://github.com/LineageOS/android_kernel_xiaomi_sm6225 -b lineage-20 kernel/xiaomi/chime --depth=1
-    # Применяем фикс для статуса загрузчика (эмуляция блокировки)
-    - sed -i 's/ro.boot.flash.locked=0/ro.boot.flash.locked=1/g' build/make/tools/releasetools/add_img_to_target_files.py || true
-    # Старт сборки
+    - cd ~/android
     - source build/envsetup.sh
-    - lunch lineag_sapphire-userdebug
+    - lunch lineage_sapphire-userdebug
     - mka bacon -j8
+
+  upload_artifacts:
+    path: "~/android/out/target/product/sapphire/*.zip"
