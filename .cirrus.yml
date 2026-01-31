@@ -1,27 +1,30 @@
 task:
-  name: Build Sapphiren Rom
-  timeout_in: 4h # Лимит бесплатной сессии
+  name: Build_Sapphiren_v1.1
+  timeout_in: 4h
+  # Используем другой образ, иногда это помогает сменить пул серверов
   container:
-    image: aospbuild/ubuntu-22.04:latest # Специальный образ для сборки Android
+    image: ghcr.io/shrp-devices/aio:latest 
     cpu: 8
     memory: 24G
-    volumes:
-      - /tmp/android:/tmp/android # Используем временный диск Cirrus
+  
+  environment:
+    # Параметры для Play Integrity Fix (первичные)
+    CUSTOM_FINGERPRINT: "google/marlin/marlin:7.1.2/NJH47O/4161133:user/release-keys"
 
   build_script:
-    - export git_user="mbov777"
-    - export git_email="imya777821@gmail.com"
-    - git config --global user.name "$git_user"
-    - git config --global user.email "$git_email"
+    - git config --global user.name "mbov777"
+    - git config --global user.email "imya777821@gmail.com"
     - mkdir -p /tmp/android && cd /tmp/android
-    # Инициализация с максимальной экономией места
+    # Инициализация
     - repo init -u https://github.com/crdroidandroid/android.git -b 13.0 --depth=1
     - repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
-    # Клонируем дерево устройства
+    # Клонирование дерева sapphiren
     - git clone https://github.com/crdroidandroid/android_device_xiaomi_sapphire -b 13.0 device/xiaomi/sapphire --depth=1
     - git clone https://github.com/TheMuppets/proprietary_vendor_xiaomi_sapphire -b 13.0 vendor/xiaomi/sapphire --depth=1
     - git clone https://github.com/LineageOS/android_kernel_xiaomi_sm6225 -b lineage-20 kernel/xiaomi/chime --depth=1
-    # Сборка
+    # Применяем фикс для статуса загрузчика (эмуляция блокировки)
+    - sed -i 's/ro.boot.flash.locked=0/ro.boot.flash.locked=1/g' build/make/tools/releasetools/add_img_to_target_files.py || true
+    # Старт сборки
     - source build/envsetup.sh
     - lunch lineag_sapphire-userdebug
     - mka bacon -j8
